@@ -1,0 +1,24 @@
+{
+    "compileOnSave": false,
+    "compilerOptions": {
+        "module": "commonjs",
+        "target": "es5",
+        "jsx": "preserve",
+        "lib": [
+            "es2015",
+            "es2015.iterable",
+            "es2015.promise",
+            "dom",
+            "es6"
+        ],
+        "moduleResolution": "node",
+        "sourceMap": true,
+    },
+    "include": [
+        "./Scripts/**/*.ts"
+    ],
+    "exclude": [
+        "node_modules",
+        "**/node_modules/*"
+    ]
+}
