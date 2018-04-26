@@ -8,7 +8,7 @@
 @section Scripts {
     <script src="~/js/wsRpc.js"></script>
     <script type="text/javascript">
-        var wsRpc = new WebSocketRpc('ws://localhost:54516/rpcwebsocket');
+        var wsRpc = new WebSocketRpc(window.location.href.replace(/https?/, 'ws') + 'rpcwebsocket');
         wsRpc.start();
 
         function reverse() {

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.WebSockets;
 using System.Text;
@@ -28,60 +29,34 @@ namespace Rpc.WebTest.WebSockets
             _rpc.RegisterMethod(this, nameof(Add));
         }
 
-        private Task SendAction(IMessage<string> obj)
+        private Task SendAction(byte[] bytes)
         {
-            var json = JsonConvert.SerializeObject(obj, new JsonSerializerSettings
-            {
-                ContractResolver = new CamelCasePropertyNamesContractResolver()
-            });
-            var bytes = Encoding.UTF8.GetBytes(json);
-            return _socket.SendAsync(bytes, WebSocketMessageType.Text, true, _tokenSource.Token);
+            return _socket.SendAsync(bytes, WebSocketMessageType.Binary, true, _tokenSource.Token);
         }
 
         public async Task ReceiveLoop()
         {
-            var stringBuilder = new StringBuilder();
             var buffer = new byte[1024 * 4];
             var tasks = new HashSet<Task>();
 
             while (!_tokenSource.IsCancellationRequested && !_socket.CloseStatus.HasValue)
             {
                 WebSocketReceiveResult result;
-                do
+                byte[] message;
+                using (var ms = new MemoryStream())
                 {
-                    result = await _socket.ReceiveAsync(buffer, _tokenSource.Token);
-                    stringBuilder.Append(Encoding.UTF8.GetString(buffer));
-                    ZeroBuffer(buffer);
-                } while (!result.EndOfMessage);
+                    do
+                    {
+                        result = await _socket.ReceiveAsync(buffer, _tokenSource.Token);
+                        await ms.WriteAsync(buffer, 0, result.Count);
+                    } while (!result.EndOfMessage);
+                    message = ms.ToArray();
+                }
 
-                var message = stringBuilder.ToString();
-                tasks.Add(Task.Factory.StartNew(() => ProcessMessage(message)));
-
-                stringBuilder.Clear();
+                tasks.Add(Task.Factory.StartNew(() => _rpc.ProcessMessage(message)));
             }
 
             await Task.WhenAll(tasks);
-        }
-
-        private void ProcessMessage(string message)
-        {
-            var obj = (JObject) JsonConvert.DeserializeObject(message);
-            if (obj.GetValue(nameof(ResponseMessage.Response), StringComparison.OrdinalIgnoreCase) != null)
-            {
-                _rpc.ProcessResponseMessage(obj.ToObject<ResponseMessage>());
-            }
-            else
-            {
-                _rpc.ProcessRequestMessage(obj.ToObject<RequestMessage>());
-            }
-        }
-
-        private void ZeroBuffer(byte[] buffer)
-        {
-            for (var i = 0; i < buffer.Length; i++)
-            {
-                buffer[i] = 0;
-            }
         }
 
         public string ReverseString(string input)

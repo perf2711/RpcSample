@@ -17,11 +17,12 @@ export class WebSocketRpc {
     start() {
         this._ws = new WebSocket(this._url);
         this._ws.onmessage = (evt) => {
-            if (typeof evt.data === 'string') {
-                this.onReceive(JSON.parse(evt.data));
-            } else {
-                this.onReceive(evt.data);
-            }
+            const fileReader = new FileReader();
+            fileReader.addEventListener('loadend', () => {
+                const message = JSON.parse(fileReader.result);
+                this.onReceive(message);
+            });
+            fileReader.readAsText(evt.data);
         }
 
         this._rpc = new Rpc<ResponseMessage, RequestMessage>((m) => this.send(m), () => guid())
